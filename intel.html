@@ -91,7 +91,9 @@
         <input type="date" id="deliveryDate" required>
 
         <label for="deliveryTime">Preferred Delivery Time</label>
-        <input type="time" id="deliveryTime" required> <label for="pickupDate">Pickup Date</label>
+        <input type="time" id="deliveryTime" required>
+
+        <label for="pickupDate">Pickup Date</label>
         <input type="date" id="pickupDate" required>
 
         <button type="submit">Submit and Confirm</button>
@@ -100,51 +102,58 @@
 </div>
 
 <script>
-    // REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
+    // --- IMPORTANT: REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL ---
+    // This URL must end with '/exec' for stable, public access.
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzknyzcYNQuTDetKbauQUnOvLbRcC9umylKlIPKYStA/exec'; 
-    // IMPORTANT: Make sure the URL ends with '/exec', not '/dev' for production use.
-    // '/dev' is for testing a specific version, '/exec' is for the latest deployed version.
+    // Example: If your URL is https://script.google.com/macros/s/ABC123xyz/dev, change it to /exec
 
     const form = document.getElementById('bookingForm');
     const responseMessageDiv = document.getElementById('responseMessage');
 
+    // Helper function to display messages to the user
+    function displayMessage(message, type) {
+        responseMessageDiv.textContent = message;
+        responseMessageDiv.className = type; // Add a class for styling (success, error, warning)
+        responseMessageDiv.style.display = 'block'; // Make the div visible
+    }
+
     form.addEventListener('submit', function(e) {
         e.preventDefault(); // Prevent default form submission
 
-        // Clear previous messages
+        // Clear any previous messages
         responseMessageDiv.style.display = 'none';
         responseMessageDiv.className = '';
         responseMessageDiv.textContent = '';
         
-        // Collect data from form fields
+        // Collect data from form fields.
+        // Ensure keys (like 'delivery_date') match what your Google Apps Script expects.
         const data = {
             name: document.getElementById('name').value,
             email: document.getElementById('email').value,
-            // Match the 'delivery_date' key to your Apps Script expectation
-            delivery_date: document.getElementById('deliveryDate').value, 
-            time: document.getElementById('deliveryTime').value, // Get time value
-            pickupDate: document.getElementById('pickupDate').value // This field is not used by Apps Script currently
+            delivery_date: document.getElementById('deliveryDate').value, // Matches Apps Script's 'delivery_date'
+            time: document.getElementById('deliveryTime').value,         // Matches Apps Script's 'time'
+            pickupDate: document.getElementById('pickupDate').value      // Not used by Apps Script yet, but collected
         };
 
-        // Send data to Google Apps Script
+        // Send data to Google Apps Script using fetch
         fetch(WEB_APP_URL, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json" // Crucial for Apps Script to parse correctly
+                "Content-Type": "application/json" // Crucial for Apps Script to parse JSON body
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data) // Convert JavaScript object to JSON string
         })
         .then(response => {
-            // Check if response is okay (HTTP status 200-299)
+            // Check if the HTTP response itself was successful (e.g., 200 OK)
             if (!response.ok) {
-                // If the response is not OK, it's a server error or network issue
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // If not OK, something went wrong on the server or network
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
-            // Parse the JSON response from Apps Script
+            // Parse the JSON response from your Apps Script
             return response.json(); 
         })
         .then(responseData => {
-            // Handle the response from your Apps Script
+            // Handle the custom JSON response from your Apps Script (e.g., {status: "booked"})
             if (responseData.status === "booked") {
                 displayMessage(responseData.message || "Booking submitted! We’ll confirm shortly.", "success");
                 form.reset(); // Clear the form on successful booking
@@ -153,22 +162,16 @@
             } else if (responseData.status === "error") {
                 displayMessage(responseData.message || "An error occurred during booking. Please try again.", "error");
             } else {
-                displayMessage("Unexpected response from server: " + JSON.stringify(responseData), "error");
+                // Fallback for unexpected responses
+                displayMessage("Unexpected response from server. Status: " + JSON.stringify(responseData), "error");
             }
         })
         .catch(error => {
-            // Handle network errors or issues with the fetch request itself
+            // Catch any errors during the fetch operation (network issues, etc.)
             console.error('Fetch error:', error);
             displayMessage("Could not connect to the server or an error occurred: " + error.message, "error");
         });
     });
-
-    // Helper function to display messages
-    function displayMessage(message, type) {
-        responseMessageDiv.textContent = message;
-        responseMessageDiv.className = type; // Add a class for styling (success, error, warning)
-        responseMessageDiv.style.display = 'block'; // Make the div visible
-    }
 </script>
 
 </body>
